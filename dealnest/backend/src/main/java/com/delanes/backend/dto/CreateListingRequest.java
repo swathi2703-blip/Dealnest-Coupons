@@ -14,6 +14,7 @@ public class CreateListingRequest {
     private Double sellingPrice;
     private String category;
     private String expiryDate;
+    private String websiteLink;
 
     public String getSellerId() {
         return sellerId;
@@ -77,5 +78,13 @@ public class CreateListingRequest {
 
     public void setExpiryDate(String expiryDate) {
         this.expiryDate = expiryDate;
+    }
+
+    public String getWebsiteLink() {
+        return websiteLink;
+    }
+
+    public void setWebsiteLink(String websiteLink) {
+        this.websiteLink = websiteLink;
     }
 }

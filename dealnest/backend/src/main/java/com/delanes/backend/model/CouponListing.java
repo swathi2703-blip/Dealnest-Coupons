@@ -22,6 +22,7 @@ public class CouponListing {
     private Integer discountPercentage;
     private String category;
     private String expiryDate;
+    private String websiteLink;
     private Boolean isSold;
     private Boolean isActive;
     private Instant createdAt;
@@ -105,6 +106,14 @@ public class CouponListing {
 
     public void setExpiryDate(String expiryDate) {
         this.expiryDate = expiryDate;
+    }
+
+    public String getWebsiteLink() {
+        return websiteLink;
+    }
+
+    public void setWebsiteLink(String websiteLink) {
+        this.websiteLink = websiteLink;
     }
 
     public Boolean getIsSold() {

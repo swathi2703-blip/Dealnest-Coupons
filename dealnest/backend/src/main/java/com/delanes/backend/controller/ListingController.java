@@ -88,6 +88,21 @@ public class ListingController {
         }
     }
 
+    @GetMapping("/api/listings/{id}")
+    public ResponseEntity<?> getListingById(@PathVariable String id) {
+        try {
+            Optional<CouponListing> found = repository.findById(id);
+            if (found.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Listing not found"));
+            }
+
+            return ResponseEntity.ok(Map.of("data", found.get()));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Database is temporarily unavailable. Please try again."));
+        }
+    }
+
     @PostMapping("/api/listings")
     public ResponseEntity<?> createListing(
             @RequestBody CreateListingRequest request,
@@ -99,7 +114,8 @@ public class ListingController {
             if (!StringUtils.hasText(request.getBrandName()) ||
                     request.getOriginalValue() == null ||
                     request.getSellingPrice() == null ||
-                    !StringUtils.hasText(request.getCategory())) {
+                    !StringUtils.hasText(request.getCategory()) ||
+                    !StringUtils.hasText(request.getWebsiteLink())) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Missing required fields"));
             }
 
@@ -119,6 +135,7 @@ public class ListingController {
             );
             listing.setCategory(request.getCategory());
             listing.setExpiryDate(StringUtils.hasText(request.getExpiryDate()) ? request.getExpiryDate() : null);
+            listing.setWebsiteLink(request.getWebsiteLink().trim());
             listing.setIsSold(false);
             listing.setIsActive(true);
             listing.setCreatedAt(Instant.now());

@@ -1,6 +1,9 @@
 package com.delanes.backend.config;
 
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -12,7 +15,12 @@ import java.util.Set;
 @Configuration
 public class MongoBootstrapConfig {
 
+        private static final Logger logger = LoggerFactory.getLogger(MongoBootstrapConfig.class);
+
     private final MongoTemplate mongoTemplate;
+
+        @Value("${app.mongo.bootstrap.fail-fast:true}")
+        private boolean failFast;
 
     public MongoBootstrapConfig(MongoTemplate mongoTemplate) {
         this.mongoTemplate = mongoTemplate;
@@ -20,41 +28,49 @@ public class MongoBootstrapConfig {
 
     @PostConstruct
     public void initializeCollectionsAndIndexes() {
-        Set<String> existing = new HashSet<>();
-        mongoTemplate.getDb().listCollectionNames().forEach(existing::add);
+        try {
+            Set<String> existing = new HashSet<>();
+            mongoTemplate.getDb().listCollectionNames().forEach(existing::add);
 
-        ensureCollection("profiles", existing);
-        ensureCollection("coupon_listings", existing);
-        ensureCollection("transactions", existing);
+            ensureCollection("profiles", existing);
+            ensureCollection("coupon_listings", existing);
+            ensureCollection("transactions", existing);
 
-        mongoTemplate.indexOps("profiles")
-                .ensureIndex(new Index().on("userId", Sort.Direction.ASC).unique().named("profiles_user_id_unique"));
-        mongoTemplate.indexOps("profiles")
-                .ensureIndex(new Index().on("createdAt", Sort.Direction.DESC).named("profiles_created_at_desc"));
+            mongoTemplate.indexOps("profiles")
+                    .ensureIndex(new Index().on("userId", Sort.Direction.ASC).unique().named("profiles_user_id_unique"));
+            mongoTemplate.indexOps("profiles")
+                    .ensureIndex(new Index().on("createdAt", Sort.Direction.DESC).named("profiles_created_at_desc"));
 
-        mongoTemplate.indexOps("coupon_listings")
-                .ensureIndex(new Index().on("sellerId", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC)
-                        .named("listings_seller_created_desc"));
-        mongoTemplate.indexOps("coupon_listings")
-                .ensureIndex(new Index().on("isActive", Sort.Direction.ASC).on("isSold", Sort.Direction.ASC)
-                        .on("createdAt", Sort.Direction.DESC).named("listings_active_sold_created_desc"));
-        mongoTemplate.indexOps("coupon_listings")
-                .ensureIndex(new Index().on("category", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC)
-                        .named("listings_category_created_desc"));
-        mongoTemplate.indexOps("coupon_listings")
-                .ensureIndex(new Index().on("expiryDate", Sort.Direction.ASC).named("listings_expiry_date"));
+            mongoTemplate.indexOps("coupon_listings")
+                    .ensureIndex(new Index().on("sellerId", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC)
+                            .named("listings_seller_created_desc"));
+            mongoTemplate.indexOps("coupon_listings")
+                    .ensureIndex(new Index().on("isActive", Sort.Direction.ASC).on("isSold", Sort.Direction.ASC)
+                            .on("createdAt", Sort.Direction.DESC).named("listings_active_sold_created_desc"));
+            mongoTemplate.indexOps("coupon_listings")
+                    .ensureIndex(new Index().on("category", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC)
+                            .named("listings_category_created_desc"));
+            mongoTemplate.indexOps("coupon_listings")
+                    .ensureIndex(new Index().on("expiryDate", Sort.Direction.ASC).named("listings_expiry_date"));
 
-        mongoTemplate.indexOps("transactions")
-                .ensureIndex(new Index().on("listingId", Sort.Direction.ASC).named("transactions_listing_id"));
-        mongoTemplate.indexOps("transactions")
-                .ensureIndex(new Index().on("buyerId", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC)
-                        .named("transactions_buyer_created_desc"));
-        mongoTemplate.indexOps("transactions")
-                .ensureIndex(new Index().on("sellerId", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC)
-                        .named("transactions_seller_created_desc"));
-        mongoTemplate.indexOps("transactions")
-                .ensureIndex(new Index().on("status", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC)
-                        .named("transactions_status_created_desc"));
+            mongoTemplate.indexOps("transactions")
+                    .ensureIndex(new Index().on("listingId", Sort.Direction.ASC).named("transactions_listing_id"));
+            mongoTemplate.indexOps("transactions")
+                    .ensureIndex(new Index().on("buyerId", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC)
+                            .named("transactions_buyer_created_desc"));
+            mongoTemplate.indexOps("transactions")
+                    .ensureIndex(new Index().on("sellerId", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC)
+                            .named("transactions_seller_created_desc"));
+            mongoTemplate.indexOps("transactions")
+                    .ensureIndex(new Index().on("status", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC)
+                            .named("transactions_status_created_desc"));
+        } catch (RuntimeException exception) {
+            if (failFast) {
+                throw exception;
+            }
+
+            logger.warn("Skipping MongoDB bootstrap due to connectivity/auth issue. Set app.mongo.bootstrap.fail-fast=true to fail startup.", exception);
+        }
     }
 
     private void ensureCollection(String name, Set<String> existing) {

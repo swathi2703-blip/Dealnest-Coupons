@@ -82,6 +82,9 @@ public class ListingController {
             return ResponseEntity.ok(Map.of("data", data));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Database is temporarily unavailable. Please try again."));
         }
     }
 
@@ -125,6 +128,9 @@ public class ListingController {
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("data", saved));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Database is temporarily unavailable. Please try again."));
         }
     }
 
@@ -155,6 +161,9 @@ public class ListingController {
             return ResponseEntity.ok(Map.of("success", true));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Database is temporarily unavailable. Please try again."));
         }
     }
 }

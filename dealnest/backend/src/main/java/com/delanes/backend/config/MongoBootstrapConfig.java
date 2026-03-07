@@ -64,6 +64,12 @@ public class MongoBootstrapConfig {
             mongoTemplate.indexOps("transactions")
                     .ensureIndex(new Index().on("status", Sort.Direction.ASC).on("createdAt", Sort.Direction.DESC)
                             .named("transactions_status_created_desc"));
+            mongoTemplate.indexOps("transactions")
+                    .ensureIndex(new Index().on("transactionId", Sort.Direction.ASC).unique()
+                            .named("transactions_transaction_id_unique"));
+            mongoTemplate.indexOps("transactions")
+                    .ensureIndex(new Index().on("paymentReference", Sort.Direction.ASC).unique().sparse()
+                            .named("transactions_payment_reference_unique"));
         } catch (RuntimeException exception) {
             if (failFast) {
                 throw exception;

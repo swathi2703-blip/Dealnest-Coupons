@@ -1,0 +1,81 @@
+package com.delanes.backend.dto;
+
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+public class CreateListingRequest {
+
+    private String sellerId;
+    private String brandName;
+    private String couponCode;
+    private String description;
+    private Double originalValue;
+    private Double sellingPrice;
+    private String category;
+    private String expiryDate;
+
+    public String getSellerId() {
+        return sellerId;
+    }
+
+    public void setSellerId(String sellerId) {
+        this.sellerId = sellerId;
+    }
+
+    public String getBrandName() {
+        return brandName;
+    }
+
+    public void setBrandName(String brandName) {
+        this.brandName = brandName;
+    }
+
+    public String getCouponCode() {
+        return couponCode;
+    }
+
+    public void setCouponCode(String couponCode) {
+        this.couponCode = couponCode;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Double getOriginalValue() {
+        return originalValue;
+    }
+
+    public void setOriginalValue(Double originalValue) {
+        this.originalValue = originalValue;
+    }
+
+    public Double getSellingPrice() {
+        return sellingPrice;
+    }
+
+    public void setSellingPrice(Double sellingPrice) {
+        this.sellingPrice = sellingPrice;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public String getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(String expiryDate) {
+        this.expiryDate = expiryDate;
+    }
+}

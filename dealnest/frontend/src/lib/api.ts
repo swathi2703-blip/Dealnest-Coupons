@@ -6,11 +6,19 @@ export interface CouponListing {
   id: string;
   brand_name: string;
   description: string | null;
+  coupon_code?: string | null;
   original_value: number;
   selling_price: number;
   discount_percentage: number | null;
   category: string;
   expiry_date: string | null;
+  website_link: string | null;
+  payout_method: "UPI" | "BANK";
+  account_holder_name: string;
+  payout_upi_id: string | null;
+  payout_bank_name: string | null;
+  payout_bank_account_number: string | null;
+  payout_bank_ifsc: string | null;
   created_at: string;
   seller_id: string;
   is_sold: boolean;
@@ -25,6 +33,68 @@ export interface CreateListingPayload {
   selling_price: number;
   category: string;
   expiry_date: string | null;
+  website_link: string;
+  payout_method: "UPI" | "BANK";
+  account_holder_name: string;
+  payout_upi_id: string | null;
+  payout_bank_name: string | null;
+  payout_bank_account_number: string | null;
+  payout_bank_ifsc: string | null;
+}
+
+export interface TransactionRecord {
+  id: string;
+  transaction_id: string;
+  listing_id: string;
+  buyer_id: string;
+  seller_id: string;
+  amount: number;
+  payment_reference: string | null;
+  status: "PENDING" | "SUCCESS" | "CANCELLED";
+  platform_fee_amount?: number;
+  seller_payout_amount?: number;
+  seller_payout_status?: string | null;
+  seller_payout_reference?: string | null;
+  created_at: string;
+  expires_at: string;
+  completed_at: string | null;
+  reveal_expires_at: string | null;
+}
+
+export interface AdminEarningsSummary {
+  total_gross_amount: number;
+  total_admin_amount: number;
+  total_seller_payout_amount: number;
+  total_successful_transactions: number;
+  successful_seller_payouts: number;
+  failed_seller_payouts: number;
+  recent_transactions: TransactionRecord[];
+}
+
+export interface PublicWebsiteStats {
+  savings_generated: number;
+  active_listings: number;
+  happy_users: number;
+}
+
+export interface InitiateTransactionResponse {
+  data: TransactionRecord;
+  form_url: string;
+  qr_url: string;
+  listing: CouponListing;
+}
+
+export interface ConfirmTransactionResponse {
+  data: TransactionRecord;
+  reveal_link: string;
+  reveal_expires_at: string;
+  email_sent: boolean;
+}
+
+export interface RevealCouponResponse {
+  coupon_code: string | null;
+  website_link: string | null;
+  reveal_expires_at: string;
 }
 
 export interface UpsertProfilePayload {
@@ -38,6 +108,20 @@ export interface UserProfile {
   email: string;
   full_name: string | null;
   phone_number: string | null;
+}
+
+export interface PaymentOrder {
+  order_id: string;
+  amount: number;
+  currency: string;
+  razorpay_key: string;
+}
+
+export interface PaymentVerificationPayload {
+  order_id: string;
+  payment_id: string;
+  signature: string;
+  listing_id: string;
 }
 
 async function request<T>(path: string, init?: RequestInit, includeAuth = false): Promise<T> {
@@ -59,7 +143,9 @@ async function request<T>(path: string, init?: RequestInit, includeAuth = false)
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new Error(body.error || "Request failed");
+    const error = new Error(body.error || "Request failed") as Error & { status?: number };
+    error.status = response.status;
+    throw error;
   }
 
   return (await response.json()) as T;
@@ -72,6 +158,22 @@ export const api = {
     if (params.sellerId) search.set("sellerId", params.sellerId);
     if (params.active) search.set("active", "true");
     return request<{ data: CouponListing[] }>(`/api/listings?${search.toString()}`, undefined, Boolean(params.sellerId));
+  },
+  getListingById: async (id: string) => {
+    try {
+      return await request<{ data: CouponListing }>(`/api/listings/${id}`);
+    } catch (error: any) {
+      // Backward compatibility for servers that only expose DELETE /api/listings/{id}
+      // and do not support GET by id.
+      if (error?.status === 405) {
+        const listingsResponse = await request<{ data: CouponListing[] }>("/api/listings");
+        const listing = listingsResponse.data.find((item) => item.id === id);
+        if (listing) {
+          return { data: listing };
+        }
+      }
+      throw error;
+    }
   },
   createListing: (payload: CreateListingPayload) =>
     request<{ data: CouponListing }>("/api/listings", {
@@ -89,4 +191,30 @@ export const api = {
     }, true),
   getProfile: () =>
     request<{ data: UserProfile }>("/api/profile", undefined, true),
+  initiateTransaction: (listingId: string) =>
+    request<InitiateTransactionResponse>("/api/transactions/initiate", {
+      method: "POST",
+      body: JSON.stringify({ listing_id: listingId }),
+    }, true),
+  confirmTransaction: (payload: { transaction_id: string; payment_transaction_id: string; email: string; roll_number: string }) =>
+    request<ConfirmTransactionResponse>("/api/transactions/confirm", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }, true),
+  revealCoupon: (token: string) =>
+    request<RevealCouponResponse>(`/api/transactions/reveal?token=${encodeURIComponent(token)}`, undefined, true),
+  createPaymentOrder: (listingId: string) =>
+    request<PaymentOrder>("/api/payments/create-order", {
+      method: "POST",
+      body: JSON.stringify({ listing_id: listingId }),
+    }, true),
+  verifyPayment: (payload: PaymentVerificationPayload) =>
+    request<{ success: boolean; transaction_id: string; message: string }>("/api/payments/verify-payment", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }, true),
+  getAdminEarningsSummary: () =>
+    request<{ data: AdminEarningsSummary }>("/api/admin/earnings-summary", undefined, true),
+  getPublicWebsiteStats: () =>
+    request<{ data: PublicWebsiteStats }>("/api/public/stats"),
 };

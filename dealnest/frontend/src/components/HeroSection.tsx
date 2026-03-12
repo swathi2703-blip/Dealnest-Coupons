@@ -1,7 +1,30 @@
+import { useEffect, useState } from "react";
 import { ArrowRight, Tag, ShoppingCart, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
+import { api, PublicWebsiteStats } from "@/lib/api";
 
 const HeroSection = () => {
+  const [stats, setStats] = useState<PublicWebsiteStats | null>(null);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const response = await api.getPublicWebsiteStats();
+        setStats(response.data);
+      } catch {
+        setStats(null);
+      }
+    };
+
+    loadStats();
+  }, []);
+
+  const formatCurrencyCompact = (value: number) =>
+    `₹${new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 }).format(value)}`;
+
+  const formatNumberCompact = (value: number) =>
+    new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+
   return (
     <section className="relative min-h-screen flex items-center section-padding pt-24 md:pt-32 overflow-hidden">
       {/* Background decorations */}
@@ -43,17 +66,23 @@ const HeroSection = () => {
             {/* Stats */}
             <div className="flex items-center gap-8 mt-10 justify-center lg:justify-start animate-fade-up delay-400">
               <div className="text-center lg:text-left">
-                <p className="font-display font-bold text-2xl text-foreground">₹50L+</p>
+                <p className="font-display font-bold text-2xl text-foreground">
+                  {stats ? formatCurrencyCompact(stats.savings_generated) : "₹0"}
+                </p>
                 <p className="text-sm text-muted-foreground">Savings Generated</p>
               </div>
               <div className="w-px h-10 bg-border" />
               <div className="text-center lg:text-left">
-                <p className="font-display font-bold text-2xl text-foreground">10,000+</p>
+                <p className="font-display font-bold text-2xl text-foreground">
+                  {stats ? formatNumberCompact(stats.active_listings) : "0"}
+                </p>
                 <p className="text-sm text-muted-foreground">Active Listings</p>
               </div>
               <div className="w-px h-10 bg-border" />
               <div className="text-center lg:text-left">
-                <p className="font-display font-bold text-2xl text-foreground">25,000+</p>
+                <p className="font-display font-bold text-2xl text-foreground">
+                  {stats ? formatNumberCompact(stats.happy_users) : "0"}
+                </p>
                 <p className="text-sm text-muted-foreground">Happy Users</p>
               </div>
             </div>

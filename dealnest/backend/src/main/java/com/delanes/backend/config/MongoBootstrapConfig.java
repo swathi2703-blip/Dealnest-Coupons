@@ -70,6 +70,9 @@ public class MongoBootstrapConfig {
             mongoTemplate.indexOps("transactions")
                     .ensureIndex(new Index().on("paymentReference", Sort.Direction.ASC).unique().sparse()
                             .named("transactions_payment_reference_unique"));
+            mongoTemplate.indexOps("transactions")
+                    .ensureIndex(new Index().on("revealToken", Sort.Direction.ASC).unique().sparse()
+                            .named("transactions_reveal_token_unique"));
         } catch (RuntimeException exception) {
             if (failFast) {
                 throw exception;

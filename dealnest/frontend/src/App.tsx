@@ -13,6 +13,8 @@ import VerifyEmail from "./pages/VerifyEmail";
 import VerifyPhone from "./pages/VerifyPhone";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Profile from "./pages/Profile";
+import Buy from "./pages/Buy";
+import RevealCoupon from "./pages/RevealCoupon";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +30,22 @@ const App = () => (
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/verify-phone" element={<VerifyPhone />} />
           <Route path="/browse" element={<Browse />} />
+          <Route
+            path="/buy/:id"
+            element={
+              <ProtectedRoute>
+                <Buy />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/coupon/reveal"
+            element={
+              <ProtectedRoute>
+                <RevealCoupon />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/sell"
             element={

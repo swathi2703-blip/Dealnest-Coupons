@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Menu, X, Tag, User } from "lucide-react";
+import { Menu, X, User } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { AccountMode, getAccountMode, setAccountMode } from "@/lib/accountMode";
+import { AccountMode, applyAccountModeTheme, getAccountMode, setAccountMode } from "@/lib/accountMode";
+import BrandLogo from "@/components/BrandLogo";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,7 +13,9 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    setLocalAccountMode(getAccountMode());
+    const mode = getAccountMode();
+    setLocalAccountMode(mode);
+    applyAccountModeTheme(mode);
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -61,11 +64,8 @@ const Navbar = () => {
       <div className="container-main px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-hero flex items-center justify-center">
-              <Tag className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold text-xl text-foreground">CouponBazaar</span>
+          <Link to="/" className="flex items-center">
+            <BrandLogo imageClassName="h-10 md:h-11 w-auto" textClassName="font-display font-bold text-xl text-foreground" />
           </Link>
 
           {/* Desktop Navigation */}
@@ -84,11 +84,13 @@ const Navbar = () => {
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-3">
             {user && (
-              <div className="flex items-center bg-muted rounded-lg p-1 mr-1">
+              <div className="flex items-center gap-2 mr-1">
                 <button
                   onClick={() => handleModeSwitch("buyer")}
                   className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                    accountMode === "buyer" ? "bg-background text-foreground" : "text-muted-foreground"
+                    accountMode === "buyer"
+                      ? "bg-[#ff9f2a] text-white"
+                      : "bg-background text-[#ff9f2a] border border-[#ff9f2a]/40 hover:bg-[#ff9f2a]/10"
                   }`}
                 >
                   Buyer
@@ -96,7 +98,9 @@ const Navbar = () => {
                 <button
                   onClick={() => handleModeSwitch("seller")}
                   className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                    accountMode === "seller" ? "bg-background text-foreground" : "text-muted-foreground"
+                    accountMode === "seller"
+                      ? "bg-[#20c8be] text-white"
+                      : "bg-background text-[#20c8be] border border-[#20c8be]/40 hover:bg-[#20c8be]/10"
                   }`}
                 >
                   Seller
@@ -146,13 +150,21 @@ const Navbar = () => {
                 <div className="flex items-center gap-2 py-2">
                   <button
                     onClick={() => handleModeSwitch("buyer")}
-                    className={`flex-1 py-2 rounded-lg text-sm ${accountMode === "buyer" ? "bg-muted text-foreground" : "text-muted-foreground border border-border"}`}
+                    className={`flex-1 py-2 rounded-lg text-sm transition-colors ${
+                      accountMode === "buyer"
+                        ? "bg-[#ff9f2a] text-white"
+                        : "text-[#ff9f2a] border border-[#ff9f2a]/40 hover:bg-[#ff9f2a]/10"
+                    }`}
                   >
                     Buyer
                   </button>
                   <button
                     onClick={() => handleModeSwitch("seller")}
-                    className={`flex-1 py-2 rounded-lg text-sm ${accountMode === "seller" ? "bg-muted text-foreground" : "text-muted-foreground border border-border"}`}
+                    className={`flex-1 py-2 rounded-lg text-sm transition-colors ${
+                      accountMode === "seller"
+                        ? "bg-[#20c8be] text-white"
+                        : "text-[#20c8be] border border-[#20c8be]/40 hover:bg-[#20c8be]/10"
+                    }`}
                   >
                     Seller
                   </button>

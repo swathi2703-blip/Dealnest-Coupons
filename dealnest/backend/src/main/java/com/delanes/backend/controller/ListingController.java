@@ -3,6 +3,7 @@ package com.delanes.backend.controller;
 import com.delanes.backend.dto.CreateListingRequest;
 import com.delanes.backend.model.CouponListing;
 import com.delanes.backend.repository.CouponListingRepository;
+import com.delanes.backend.repository.UserProfileRepository;
 import com.delanes.backend.service.FirebaseAuthService;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -29,15 +30,18 @@ public class ListingController {
 
     private final MongoTemplate mongoTemplate;
     private final CouponListingRepository repository;
+    private final UserProfileRepository userProfileRepository;
     private final FirebaseAuthService firebaseAuthService;
 
     public ListingController(
             MongoTemplate mongoTemplate,
             CouponListingRepository repository,
+            UserProfileRepository userProfileRepository,
             FirebaseAuthService firebaseAuthService
     ) {
         this.mongoTemplate = mongoTemplate;
         this.repository = repository;
+        this.userProfileRepository = userProfileRepository;
         this.firebaseAuthService = firebaseAuthService;
     }
 
@@ -103,6 +107,38 @@ public class ListingController {
         }
     }
 
+        @GetMapping("/api/public/stats")
+        public ResponseEntity<?> getPublicStats() {
+        try {
+            List<CouponListing> listings = repository.findAll();
+            long activeListings = listings.stream()
+                .filter(item -> Boolean.TRUE.equals(item.getIsActive()) && !Boolean.TRUE.equals(item.getIsSold()))
+                .count();
+
+            double savingsGenerated = listings.stream()
+                .filter(item -> Boolean.TRUE.equals(item.getIsSold()))
+                .mapToDouble(item -> {
+                double original = item.getOriginalValue() == null ? 0 : item.getOriginalValue();
+                double selling = item.getSellingPrice() == null ? 0 : item.getSellingPrice();
+                return Math.max(0, original - selling);
+                })
+                .sum();
+
+            long happyUsers = userProfileRepository.count();
+
+            return ResponseEntity.ok(Map.of(
+                "data", Map.of(
+                    "savings_generated", Math.round(savingsGenerated),
+                    "active_listings", activeListings,
+                    "happy_users", happyUsers
+                )
+            ));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "Database is temporarily unavailable. Please try again."));
+        }
+        }
+
     @PostMapping("/api/listings")
     public ResponseEntity<?> createListing(
             @RequestBody CreateListingRequest request,
@@ -117,6 +153,27 @@ public class ListingController {
                     !StringUtils.hasText(request.getCategory()) ||
                     !StringUtils.hasText(request.getWebsiteLink())) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Missing required fields"));
+            }
+
+            if (!StringUtils.hasText(request.getPayoutMethod()) ||
+                    !StringUtils.hasText(request.getAccountHolderName())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Payout method and account holder name are required"));
+            }
+
+            String payoutMethod = request.getPayoutMethod().trim().toUpperCase();
+            if (!"UPI".equals(payoutMethod) && !"BANK".equals(payoutMethod)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid payout method. Use UPI or BANK"));
+            }
+
+            if ("UPI".equals(payoutMethod) && !StringUtils.hasText(request.getPayoutUpiId())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "UPI ID is required for UPI payout"));
+            }
+
+            if ("BANK".equals(payoutMethod) &&
+                    (!StringUtils.hasText(request.getPayoutBankName()) ||
+                            !StringUtils.hasText(request.getPayoutBankAccountNumber()) ||
+                            !StringUtils.hasText(request.getPayoutBankIfsc()))) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Bank name, account number and IFSC are required for BANK payout"));
             }
 
             if (request.getOriginalValue() <= 0 || request.getSellingPrice() <= 0) {
@@ -136,6 +193,20 @@ public class ListingController {
             listing.setCategory(request.getCategory());
             listing.setExpiryDate(StringUtils.hasText(request.getExpiryDate()) ? request.getExpiryDate() : null);
             listing.setWebsiteLink(request.getWebsiteLink().trim());
+                listing.setPayoutMethod(payoutMethod);
+                listing.setAccountHolderName(request.getAccountHolderName().trim());
+                listing.setPayoutUpiId("UPI".equals(payoutMethod) && StringUtils.hasText(request.getPayoutUpiId())
+                    ? request.getPayoutUpiId().trim()
+                    : null);
+                listing.setPayoutBankName("BANK".equals(payoutMethod) && StringUtils.hasText(request.getPayoutBankName())
+                    ? request.getPayoutBankName().trim()
+                    : null);
+                listing.setPayoutBankAccountNumber("BANK".equals(payoutMethod) && StringUtils.hasText(request.getPayoutBankAccountNumber())
+                    ? request.getPayoutBankAccountNumber().trim()
+                    : null);
+                listing.setPayoutBankIfsc("BANK".equals(payoutMethod) && StringUtils.hasText(request.getPayoutBankIfsc())
+                    ? request.getPayoutBankIfsc().trim().toUpperCase()
+                    : null);
             listing.setIsSold(false);
             listing.setIsActive(true);
             listing.setCreatedAt(Instant.now());

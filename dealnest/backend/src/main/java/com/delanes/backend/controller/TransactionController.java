@@ -6,15 +6,18 @@ import com.delanes.backend.model.CouponListing;
 import com.delanes.backend.model.TransactionRecord;
 import com.delanes.backend.repository.CouponListingRepository;
 import com.delanes.backend.repository.TransactionRecordRepository;
+import com.delanes.backend.service.CouponRevealMailService;
 import com.delanes.backend.service.FirebaseAuthService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
@@ -34,6 +37,7 @@ public class TransactionController {
     private final CouponListingRepository listingRepository;
     private final TransactionRecordRepository transactionRepository;
     private final FirebaseAuthService firebaseAuthService;
+    private final CouponRevealMailService couponRevealMailService;
 
     @Value("${app.payment.google-form-url:https://forms.gle/pN1vTyCemqh3MPSX6}")
     private String googleFormUrl;
@@ -44,17 +48,22 @@ public class TransactionController {
     @Value("${app.payment.qr-expiry-seconds:300}")
     private long qrExpirySeconds;
 
-    @Value("${app.payment.reveal-expiry-seconds:360}")
+    @Value("${app.payment.reveal-expiry-seconds:300}")
     private long revealExpirySeconds;
+
+    @Value("${app.payment.reveal-link-base-url:http://localhost:8080/coupon/reveal}")
+    private String revealLinkBaseUrl;
 
     public TransactionController(
             CouponListingRepository listingRepository,
             TransactionRecordRepository transactionRepository,
-            FirebaseAuthService firebaseAuthService
+            FirebaseAuthService firebaseAuthService,
+            CouponRevealMailService couponRevealMailService
     ) {
         this.listingRepository = listingRepository;
         this.transactionRepository = transactionRepository;
         this.firebaseAuthService = firebaseAuthService;
+        this.couponRevealMailService = couponRevealMailService;
     }
 
     @PostMapping("/initiate")
@@ -98,9 +107,7 @@ public class TransactionController {
 
             transactionRepository.save(record);
 
-            String formUrl = StringUtils.hasText(googleFormUrl)
-                    ? googleFormUrl + (googleFormUrl.contains("?") ? "&" : "?") + "transaction_id=" + transactionId
-                    : "";
+                String formUrl = StringUtils.hasText(googleFormUrl) ? googleFormUrl : "";
 
             return ResponseEntity.ok(Map.of(
                     "data", record,
@@ -124,8 +131,30 @@ public class TransactionController {
         try {
             var user = firebaseAuthService.verifyToken(authorization);
 
-            if (!StringUtils.hasText(request.getTransactionId()) || !StringUtils.hasText(request.getPaymentReference())) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Transaction ID and payment reference are required"));
+            String requestEmail = StringUtils.hasText(request.getEmail()) ? request.getEmail().trim().toLowerCase(Locale.ROOT) : "";
+            String userEmail = StringUtils.hasText(user.getEmail()) ? user.getEmail().trim().toLowerCase(Locale.ROOT) : "";
+            String requestRoll = StringUtils.hasText(request.getRollNumber()) ? request.getRollNumber().trim().toLowerCase(Locale.ROOT) : "";
+            String expectedRoll = extractRollNumber(userEmail);
+            String paymentTransactionId = StringUtils.hasText(request.getPaymentTransactionId())
+                    ? request.getPaymentTransactionId().trim().toUpperCase(Locale.ROOT)
+                    : (StringUtils.hasText(request.getPaymentReference())
+                    ? request.getPaymentReference().trim().toUpperCase(Locale.ROOT)
+                    : "");
+
+            if (!StringUtils.hasText(request.getTransactionId()) || !StringUtils.hasText(paymentTransactionId)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Transaction context and payment transaction ID are required"));
+            }
+
+            if (!StringUtils.hasText(requestEmail) || !StringUtils.hasText(requestRoll)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Email and roll number are required"));
+            }
+
+            if (!requestEmail.equals(userEmail)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Entered email does not match logged in user"));
+            }
+
+            if (!requestRoll.equals(expectedRoll)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Entered roll number does not match your account"));
             }
 
             Optional<TransactionRecord> recordOptional = transactionRepository.findByTransactionId(request.getTransactionId().trim());
@@ -150,11 +179,10 @@ public class TransactionController {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Transaction expired. Please retry."));
             }
 
-            String paymentReference = request.getPaymentReference().trim().toUpperCase(Locale.ROOT);
-            if (transactionRepository.existsByPaymentReferenceAndIdNot(paymentReference, record.getId())) {
+            if (transactionRepository.existsByPaymentReferenceAndIdNot(paymentTransactionId, record.getId())) {
                 record.setStatus(STATUS_CANCELLED);
                 record.setFailureReason("Duplicate payment reference detected");
-                record.setPaymentReference(paymentReference);
+                record.setPaymentReference(paymentTransactionId);
                 transactionRepository.save(record);
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Duplicate transaction ID detected. Transaction cancelled."));
             }
@@ -178,13 +206,67 @@ public class TransactionController {
             listingRepository.save(listing);
 
             record.setStatus(STATUS_SUCCESS);
-            record.setPaymentReference(paymentReference);
+                record.setPaymentReference(paymentTransactionId);
             record.setCompletedAt(now);
             record.setRevealExpiresAt(now.plusSeconds(revealExpirySeconds));
+                String revealToken = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
+                record.setRevealToken(revealToken);
             transactionRepository.save(record);
+
+                String revealLink = buildRevealLink(revealToken);
+                boolean emailSent = couponRevealMailService.sendRevealLink(userEmail, listing.getBrandName(), revealLink, revealExpirySeconds);
 
             return ResponseEntity.ok(Map.of(
                     "data", record,
+                    "reveal_link", revealLink,
+                    "reveal_expires_at", record.getRevealExpiresAt(),
+                    "email_sent", emailSent
+            ));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Database is temporarily unavailable. Please try again."));
+        }
+    }
+
+    @GetMapping("/reveal")
+    public ResponseEntity<?> revealCoupon(
+            @RequestParam String token,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        try {
+            var user = firebaseAuthService.verifyToken(authorization);
+            if (!StringUtils.hasText(token)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Reveal token is required"));
+            }
+
+            Optional<TransactionRecord> recordOptional = transactionRepository.findByRevealToken(token.trim());
+            if (recordOptional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Invalid or expired reveal link"));
+            }
+
+            TransactionRecord record = recordOptional.get();
+            if (!STATUS_SUCCESS.equals(record.getStatus())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Transaction is not eligible for reveal"));
+            }
+
+            if (!user.getUid().equals(record.getBuyerId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Unauthorized reveal access"));
+            }
+
+            Instant now = Instant.now();
+            if (record.getRevealExpiresAt() == null || now.isAfter(record.getRevealExpiresAt())) {
+                return ResponseEntity.status(HttpStatus.GONE).body(Map.of("error", "Reveal link has expired"));
+            }
+
+            Optional<CouponListing> listingOptional = listingRepository.findById(record.getListingId());
+            if (listingOptional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Listing not found"));
+            }
+
+            CouponListing listing = listingOptional.get();
+            return ResponseEntity.ok(Map.of(
                     "coupon_code", listing.getCouponCode(),
                     "website_link", listing.getWebsiteLink(),
                     "reveal_expires_at", record.getRevealExpiresAt()
@@ -195,6 +277,24 @@ public class TransactionController {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                     .body(Map.of("error", "Database is temporarily unavailable. Please try again."));
         }
+    }
+
+    private String buildRevealLink(String revealToken) {
+        String base = StringUtils.hasText(revealLinkBaseUrl) ? revealLinkBaseUrl.trim() : "http://localhost:8080/coupon/reveal";
+        return base + (base.contains("?") ? "&" : "?") + "token=" + revealToken;
+    }
+
+    private String extractRollNumber(String email) {
+        if (!StringUtils.hasText(email)) {
+            return "";
+        }
+
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 0) {
+            return "";
+        }
+
+        return email.substring(0, atIndex).trim().toLowerCase(Locale.ROOT);
     }
 
     private String generateTransactionId() {

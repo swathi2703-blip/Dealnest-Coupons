@@ -18,9 +18,19 @@ public class TransactionRecord {
     private String buyerId;
     private String sellerId;
     private Double amount;
+    private Double platformFeeAmount;
+    private Double sellerPayoutAmount;
+    private Double platformFeePercent;
     private String paymentReference;
+    private String revealToken;
     private String status;
     private String failureReason;
+    private String razorpayOrderId;
+    private String razorpayPaymentId;
+    private String sellerPayoutStatus;
+    private String sellerPayoutReference;
+    private String sellerPayoutFailureReason;
+    private Instant sellerPayoutProcessedAt;
     private Instant createdAt;
     private Instant expiresAt;
     private Instant completedAt;
@@ -74,12 +84,44 @@ public class TransactionRecord {
         this.amount = amount;
     }
 
+    public Double getPlatformFeeAmount() {
+        return platformFeeAmount;
+    }
+
+    public void setPlatformFeeAmount(Double platformFeeAmount) {
+        this.platformFeeAmount = platformFeeAmount;
+    }
+
+    public Double getSellerPayoutAmount() {
+        return sellerPayoutAmount;
+    }
+
+    public void setSellerPayoutAmount(Double sellerPayoutAmount) {
+        this.sellerPayoutAmount = sellerPayoutAmount;
+    }
+
+    public Double getPlatformFeePercent() {
+        return platformFeePercent;
+    }
+
+    public void setPlatformFeePercent(Double platformFeePercent) {
+        this.platformFeePercent = platformFeePercent;
+    }
+
     public String getPaymentReference() {
         return paymentReference;
     }
 
     public void setPaymentReference(String paymentReference) {
         this.paymentReference = paymentReference;
+    }
+
+    public String getRevealToken() {
+        return revealToken;
+    }
+
+    public void setRevealToken(String revealToken) {
+        this.revealToken = revealToken;
     }
 
     public String getStatus() {
@@ -128,5 +170,53 @@ public class TransactionRecord {
 
     public void setRevealExpiresAt(Instant revealExpiresAt) {
         this.revealExpiresAt = revealExpiresAt;
+    }
+
+    public String getRazorpayOrderId() {
+        return razorpayOrderId;
+    }
+
+    public void setRazorpayOrderId(String razorpayOrderId) {
+        this.razorpayOrderId = razorpayOrderId;
+    }
+
+    public String getRazorpayPaymentId() {
+        return razorpayPaymentId;
+    }
+
+    public void setRazorpayPaymentId(String razorpayPaymentId) {
+        this.razorpayPaymentId = razorpayPaymentId;
+    }
+
+    public String getSellerPayoutStatus() {
+        return sellerPayoutStatus;
+    }
+
+    public void setSellerPayoutStatus(String sellerPayoutStatus) {
+        this.sellerPayoutStatus = sellerPayoutStatus;
+    }
+
+    public String getSellerPayoutReference() {
+        return sellerPayoutReference;
+    }
+
+    public void setSellerPayoutReference(String sellerPayoutReference) {
+        this.sellerPayoutReference = sellerPayoutReference;
+    }
+
+    public String getSellerPayoutFailureReason() {
+        return sellerPayoutFailureReason;
+    }
+
+    public void setSellerPayoutFailureReason(String sellerPayoutFailureReason) {
+        this.sellerPayoutFailureReason = sellerPayoutFailureReason;
+    }
+
+    public Instant getSellerPayoutProcessedAt() {
+        return sellerPayoutProcessedAt;
+    }
+
+    public void setSellerPayoutProcessedAt(Instant sellerPayoutProcessedAt) {
+        this.sellerPayoutProcessedAt = sellerPayoutProcessedAt;
     }
 }

@@ -6,6 +6,7 @@ import { auth } from "@/lib/firebase";
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   updateProfile,
 } from "firebase/auth";
@@ -14,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Tag, Mail, Lock, User, ArrowLeft } from "lucide-react";
+import { Mail, Lock, User, ArrowLeft } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo";
 import { z } from "zod";
 
 const emailSchema = z
@@ -54,6 +56,25 @@ const getAuthErrorMessage = (error: unknown) => {
       return "Network error while contacting Firebase. Check your internet connection.";
     default:
       return error.message || "Authentication failed";
+  }
+};
+
+const getPasswordResetErrorMessage = (error: unknown) => {
+  if (!(error instanceof FirebaseError)) {
+    return "Unable to send password reset email";
+  }
+
+  switch (error.code) {
+    case "auth/invalid-email":
+      return "Please enter a valid email address.";
+    case "auth/user-not-found":
+      return "No account found with this email address.";
+    case "auth/too-many-requests":
+      return "Too many requests. Please try again later.";
+    case "auth/network-request-failed":
+      return "Network error while contacting Firebase. Check your internet connection.";
+    default:
+      return error.message || "Unable to send password reset email";
   }
 };
 
@@ -140,13 +161,13 @@ const Auth = () => {
 
         toast({
           title: "Account created!",
-          description: "Welcome to CouponBazaar. Your phone number has been saved.",
+          description: "Welcome to DealNest. Your phone number has been saved.",
         });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
         toast({
           title: "Login successful",
-          description: "Welcome back to CouponBazaar.",
+          description: "Welcome back to DealNest.",
         });
       }
 
@@ -163,6 +184,37 @@ const Auth = () => {
     }
   };
 
+  const handleForgotPassword = async () => {
+    const newErrors: { email?: string; password?: string; fullName?: string; phoneNumber?: string } = {};
+
+    try {
+      emailSchema.parse(email);
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        newErrors.email = e.errors[0].message;
+      }
+      setErrors((prev) => ({ ...prev, ...newErrors }));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      toast({
+        title: "Reset email sent",
+        description: "Check your inbox for a password reset link.",
+      });
+    } catch (error: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Reset failed",
+        description: getPasswordResetErrorMessage(error),
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left - Form */}
@@ -173,11 +225,8 @@ const Auth = () => {
             Back to Home
           </Link>
 
-          <div className="flex items-center gap-2 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-hero flex items-center justify-center">
-              <Tag className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold text-xl">CouponBazaar</span>
+          <div className="mb-8">
+            <BrandLogo imageClassName="h-10 w-auto" textClassName="font-display font-bold text-xl" />
           </div>
 
           <h1 className="text-3xl font-display font-bold mb-2">
@@ -259,6 +308,18 @@ const Auth = () => {
               </div>
               {errors.password && (
                 <p className="text-destructive text-sm">{errors.password}</p>
+              )}
+              {!isSignUp && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    disabled={loading}
+                    className="text-sm text-primary font-semibold hover:underline disabled:opacity-60"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
               )}
             </div>
 

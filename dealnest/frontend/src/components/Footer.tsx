@@ -1,5 +1,6 @@
-import { Tag, Mail, Phone, MapPin } from "lucide-react";
+import { Mail, Phone, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
+import BrandLogo from "@/components/BrandLogo";
 
 const Footer = () => {
   const footerLinks = {
@@ -29,11 +30,8 @@ const Footer = () => {
         <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-12 mb-12">
           {/* Brand */}
           <div className="lg:col-span-2">
-            <Link to="/" className="flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-hero flex items-center justify-center">
-                <Tag className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <span className="font-display font-bold text-xl">CouponBazaar</span>
+            <Link to="/" className="mb-6 inline-flex items-center">
+              <BrandLogo imageClassName="h-11 w-auto" textClassName="font-display font-bold text-xl" />
             </Link>
             <p className="text-background/70 mb-6 max-w-sm">
               India's #1 marketplace for buying and selling unused coupons, gift cards, and vouchers. Turn your unused coupons into cash!
@@ -41,7 +39,7 @@ const Footer = () => {
             <div className="space-y-3 text-background/70">
               <div className="flex items-center gap-3">
                 <Mail className="w-5 h-5" />
-                <span>hello@couponbazaar.in</span>
+                <span>hello@dealnest.in</span>
               </div>
               <div className="flex items-center gap-3">
                 <Phone className="w-5 h-5" />
@@ -110,7 +108,7 @@ const Footer = () => {
         <div className="border-t border-background/10 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-background/50 text-sm">
-              © 2024 CouponBazaar. All rights reserved. Made with ❤️ in India
+              © 2024 DealNest. All rights reserved. Made with ❤️ in India
             </p>
             <div className="flex items-center gap-4">
               <span className="text-background/50 text-sm">Secure payments via</span>

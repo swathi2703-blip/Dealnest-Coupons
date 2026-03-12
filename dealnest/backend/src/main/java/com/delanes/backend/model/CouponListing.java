@@ -23,6 +23,12 @@ public class CouponListing {
     private String category;
     private String expiryDate;
     private String websiteLink;
+    private String payoutMethod;
+    private String accountHolderName;
+    private String payoutUpiId;
+    private String payoutBankName;
+    private String payoutBankAccountNumber;
+    private String payoutBankIfsc;
     private Boolean isSold;
     private Boolean isActive;
     private Instant createdAt;
@@ -114,6 +120,54 @@ public class CouponListing {
 
     public void setWebsiteLink(String websiteLink) {
         this.websiteLink = websiteLink;
+    }
+
+    public String getPayoutMethod() {
+        return payoutMethod;
+    }
+
+    public void setPayoutMethod(String payoutMethod) {
+        this.payoutMethod = payoutMethod;
+    }
+
+    public String getAccountHolderName() {
+        return accountHolderName;
+    }
+
+    public void setAccountHolderName(String accountHolderName) {
+        this.accountHolderName = accountHolderName;
+    }
+
+    public String getPayoutUpiId() {
+        return payoutUpiId;
+    }
+
+    public void setPayoutUpiId(String payoutUpiId) {
+        this.payoutUpiId = payoutUpiId;
+    }
+
+    public String getPayoutBankName() {
+        return payoutBankName;
+    }
+
+    public void setPayoutBankName(String payoutBankName) {
+        this.payoutBankName = payoutBankName;
+    }
+
+    public String getPayoutBankAccountNumber() {
+        return payoutBankAccountNumber;
+    }
+
+    public void setPayoutBankAccountNumber(String payoutBankAccountNumber) {
+        this.payoutBankAccountNumber = payoutBankAccountNumber;
+    }
+
+    public String getPayoutBankIfsc() {
+        return payoutBankIfsc;
+    }
+
+    public void setPayoutBankIfsc(String payoutBankIfsc) {
+        this.payoutBankIfsc = payoutBankIfsc;
     }
 
     public Boolean getIsSold() {

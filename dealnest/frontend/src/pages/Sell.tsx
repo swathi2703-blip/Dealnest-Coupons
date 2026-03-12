@@ -41,6 +41,13 @@ const Sell = () => {
     sellingPrice: "",
     category: "",
     expiryDate: "",
+    websiteLink: "",
+    payoutMethod: "UPI",
+    accountHolderName: "",
+    payoutUpiId: "",
+    payoutBankName: "",
+    payoutBankAccountNumber: "",
+    payoutBankIfsc: "",
   });
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -66,10 +73,28 @@ const Sell = () => {
       return;
     }
 
-    if (!formData.brandName || !formData.originalValue || !formData.sellingPrice || !formData.category) {
+    if (!formData.brandName || !formData.originalValue || !formData.sellingPrice || !formData.category || !formData.websiteLink || !formData.accountHolderName) {
       toast({
         title: "Missing fields",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields including payout details",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.payoutMethod === "UPI" && !formData.payoutUpiId) {
+      toast({
+        title: "Missing payout details",
+        description: "Please enter your UPI ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.payoutMethod === "BANK" && (!formData.payoutBankName || !formData.payoutBankAccountNumber || !formData.payoutBankIfsc)) {
+      toast({
+        title: "Missing payout details",
+        description: "Please enter bank name, account number and IFSC",
         variant: "destructive",
       });
       return;
@@ -86,6 +111,13 @@ const Sell = () => {
         selling_price: parseFloat(formData.sellingPrice),
         category: formData.category,
         expiry_date: formData.expiryDate || null,
+        website_link: formData.websiteLink.trim(),
+        payout_method: formData.payoutMethod as "UPI" | "BANK",
+        account_holder_name: formData.accountHolderName.trim(),
+        payout_upi_id: formData.payoutMethod === "UPI" ? formData.payoutUpiId.trim() : null,
+        payout_bank_name: formData.payoutMethod === "BANK" ? formData.payoutBankName.trim() : null,
+        payout_bank_account_number: formData.payoutMethod === "BANK" ? formData.payoutBankAccountNumber.trim() : null,
+        payout_bank_ifsc: formData.payoutMethod === "BANK" ? formData.payoutBankIfsc.trim().toUpperCase() : null,
       });
 
       toast({
@@ -237,6 +269,98 @@ const Sell = () => {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="websiteLink">Website Link *</Label>
+                <Input
+                  id="websiteLink"
+                  type="url"
+                  placeholder="https://example.com"
+                  value={formData.websiteLink}
+                  onChange={(e) => setFormData({ ...formData, websiteLink: e.target.value })}
+                />
+              </div>
+
+              <div className="rounded-2xl border border-border p-4 space-y-4">
+                <h3 className="text-base font-semibold">Seller Payout Details *</h3>
+
+                <div className="space-y-2">
+                  <Label htmlFor="accountHolderName">Account Holder Name *</Label>
+                  <Input
+                    id="accountHolderName"
+                    placeholder="Enter full name as per payout account"
+                    value={formData.accountHolderName}
+                    onChange={(e) => setFormData({ ...formData, accountHolderName: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="payoutMethod">Payout Method *</Label>
+                  <Select
+                    value={formData.payoutMethod}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        payoutMethod: value,
+                        payoutUpiId: "",
+                        payoutBankName: "",
+                        payoutBankAccountNumber: "",
+                        payoutBankIfsc: "",
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payout method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="UPI">UPI</SelectItem>
+                      <SelectItem value="BANK">Bank Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {formData.payoutMethod === "UPI" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="payoutUpiId">UPI ID *</Label>
+                    <Input
+                      id="payoutUpiId"
+                      placeholder="name@upi"
+                      value={formData.payoutUpiId}
+                      onChange={(e) => setFormData({ ...formData, payoutUpiId: e.target.value })}
+                    />
+                  </div>
+                ) : (
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="payoutBankName">Bank Name *</Label>
+                      <Input
+                        id="payoutBankName"
+                        placeholder="e.g., HDFC Bank"
+                        value={formData.payoutBankName}
+                        onChange={(e) => setFormData({ ...formData, payoutBankName: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="payoutBankAccountNumber">Account Number *</Label>
+                      <Input
+                        id="payoutBankAccountNumber"
+                        placeholder="Enter account number"
+                        value={formData.payoutBankAccountNumber}
+                        onChange={(e) => setFormData({ ...formData, payoutBankAccountNumber: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="payoutBankIfsc">IFSC *</Label>
+                      <Input
+                        id="payoutBankIfsc"
+                        placeholder="e.g., HDFC0001234"
+                        value={formData.payoutBankIfsc}
+                        onChange={(e) => setFormData({ ...formData, payoutBankIfsc: e.target.value.toUpperCase() })}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <Button type="submit" disabled={loading} className="w-full btn-primary py-6 text-lg">

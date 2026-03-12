@@ -51,7 +51,7 @@ const Testimonials = () => {
             Loved by <span className="gradient-text">25,000+ Users</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Join thousands of smart Indians who are saving and earning with CouponBazaar.
+            Join thousands of smart Indians who are saving and earning with DealNest.
           </p>
         </div>
 

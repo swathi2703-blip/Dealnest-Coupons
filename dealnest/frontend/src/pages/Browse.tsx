@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { api, CouponListing } from "@/lib/api";
+import { auth } from "@/lib/firebase";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Clock, Percent, IndianRupee } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Search, Clock, Percent, IndianRupee, Trash2 } from "lucide-react";
 
 const categories = [
   "All",
@@ -29,6 +32,7 @@ const fallbackListings: CouponListing[] = [
     discount_percentage: 40,
     category: "Fashion",
     expiry_date: "2026-12-31",
+    website_link: "https://www.myntra.com",
     created_at: new Date().toISOString(),
     seller_id: "demo-seller-1",
     is_sold: false,
@@ -43,6 +47,7 @@ const fallbackListings: CouponListing[] = [
     discount_percentage: 30,
     category: "Food & Dining",
     expiry_date: "2026-11-30",
+    website_link: "https://www.swiggy.com",
     created_at: new Date().toISOString(),
     seller_id: "demo-seller-2",
     is_sold: false,
@@ -57,6 +62,7 @@ const fallbackListings: CouponListing[] = [
     discount_percentage: 30,
     category: "Travel",
     expiry_date: "2026-10-31",
+    website_link: "https://www.makemytrip.com",
     created_at: new Date().toISOString(),
     seller_id: "demo-seller-3",
     is_sold: false,
@@ -71,6 +77,7 @@ const fallbackListings: CouponListing[] = [
     discount_percentage: 25,
     category: "Shopping",
     expiry_date: "2026-09-30",
+    website_link: "https://www.flipkart.com",
     created_at: new Date().toISOString(),
     seller_id: "demo-seller-4",
     is_sold: false,
@@ -85,6 +92,7 @@ const fallbackListings: CouponListing[] = [
     discount_percentage: 38,
     category: "Cafes",
     expiry_date: "2026-12-15",
+    website_link: "https://www.starbucks.in",
     created_at: new Date().toISOString(),
     seller_id: "demo-seller-5",
     is_sold: false,
@@ -99,6 +107,7 @@ const fallbackListings: CouponListing[] = [
     discount_percentage: 33,
     category: "Entertainment",
     expiry_date: "2026-08-31",
+    website_link: "https://in.bookmyshow.com",
     created_at: new Date().toISOString(),
     seller_id: "demo-seller-6",
     is_sold: false,
@@ -108,17 +117,29 @@ const fallbackListings: CouponListing[] = [
 
 const Browse = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const [listings, setListings] = useState<CouponListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [usingFallback, setUsingFallback] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [deletingListingId, setDeletingListingId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState(
     searchParams.get("category") || "All"
   );
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchListings();
   }, [selectedCategory]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const fetchListings = async () => {
     setLoading(true);
@@ -155,6 +176,36 @@ const Browse = () => {
     Fashion: "👗",
     Cafes: "☕",
     "Gift Cards": "🎁",
+  };
+
+  const handleDeleteListing = async (listingId: string) => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    const shouldDelete = window.confirm("Delete this listing? This action cannot be undone.");
+    if (!shouldDelete) {
+      return;
+    }
+
+    setDeletingListingId(listingId);
+    try {
+      await api.deleteListing(listingId);
+      setListings((prev) => prev.filter((listing) => listing.id !== listingId));
+      toast({
+        title: "Listing deleted",
+        description: "Your listing has been removed.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Delete failed",
+        description: error?.message || "Unable to delete this listing right now.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingListingId(null);
+    }
   };
 
   return (
@@ -233,7 +284,10 @@ const Browse = () => {
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredListings.map((listing) => (
+              {filteredListings.map((listing) => {
+                const isOwnListing = Boolean(user && listing.seller_id === user.uid);
+
+                return (
                 <div key={listing.id} className="card-deal group cursor-pointer">
                   <div className="relative h-48 bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
                     <span className="text-7xl group-hover:scale-110 transition-transform duration-300">
@@ -279,7 +333,7 @@ const Browse = () => {
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <div className="flex items-baseline gap-2">
                         <span className="text-2xl font-display font-bold text-primary">
                           ₹{listing.selling_price}
@@ -288,13 +342,36 @@ const Browse = () => {
                           ₹{listing.original_value}
                         </span>
                       </div>
-                      <button className="bg-primary/10 text-primary px-4 py-2 rounded-xl font-semibold text-sm hover:bg-primary hover:text-primary-foreground transition-all duration-300">
-                        Buy Now
-                      </button>
+                      {isOwnListing ? (
+                        <div className="flex items-center gap-2">
+                          <span className="bg-primary/10 text-primary px-3 py-2 rounded-xl font-semibold text-sm">
+                            Your Listing
+                          </span>
+                          <button
+                            onClick={() => handleDeleteListing(listing.id)}
+                            disabled={deletingListingId === listing.id}
+                            className="bg-destructive/10 text-destructive px-3 py-2 rounded-xl font-semibold text-sm hover:bg-destructive hover:text-destructive-foreground transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+                            aria-label={`Delete ${listing.brand_name} listing`}
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              <Trash2 className="w-3.5 h-3.5" />
+                              {deletingListingId === listing.id ? "Deleting..." : "Delete"}
+                            </span>
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => navigate(`/buy/${listing.id}`)}
+                          className="bg-primary/10 text-primary px-4 py-2 rounded-xl font-semibold text-sm hover:bg-primary hover:text-primary-foreground transition-all duration-300"
+                        >
+                          Buy Now
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

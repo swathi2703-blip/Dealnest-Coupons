@@ -8,6 +8,7 @@ import com.delanes.backend.model.CouponListing;
 import com.delanes.backend.model.TransactionRecord;
 import com.delanes.backend.repository.CouponListingRepository;
 import com.delanes.backend.repository.TransactionRecordRepository;
+import com.delanes.backend.service.CouponRevealMailService;
 import com.delanes.backend.service.FirebaseAuthService;
 import com.delanes.backend.service.PaymentService;
 import com.razorpay.Order;
@@ -42,6 +43,7 @@ public class PaymentController {
     private final CouponListingRepository listingRepository;
     private final TransactionRecordRepository transactionRepository;
     private final FirebaseAuthService firebaseAuthService;
+    private final CouponRevealMailService couponRevealMailService;
 
     @Value("${app.payment.reveal-link-base-url:http://localhost:8080/coupon/reveal}")
     private String revealLinkBaseUrl;
@@ -56,12 +58,14 @@ public class PaymentController {
             PaymentService paymentService,
             CouponListingRepository listingRepository,
             TransactionRecordRepository transactionRepository,
-            FirebaseAuthService firebaseAuthService
+            FirebaseAuthService firebaseAuthService,
+            CouponRevealMailService couponRevealMailService
     ) {
         this.paymentService = paymentService;
         this.listingRepository = listingRepository;
         this.transactionRepository = transactionRepository;
         this.firebaseAuthService = firebaseAuthService;
+        this.couponRevealMailService = couponRevealMailService;
     }
 
     @PostMapping("/create-order")
@@ -188,7 +192,16 @@ public class PaymentController {
 
             // Check if already completed
             if (STATUS_SUCCESS.equals(record.getStatus())) {
-                return ResponseEntity.ok(new PaymentVerificationResponse(true, record.getTransactionId(), "Payment already verified"));
+                String existingRevealLink = StringUtils.hasText(record.getRevealToken()) ? buildRevealLink(record.getRevealToken()) : null;
+                String existingRevealExpiry = record.getRevealExpiresAt() != null ? record.getRevealExpiresAt().toString() : null;
+                return ResponseEntity.ok(new PaymentVerificationResponse(
+                        true,
+                        record.getTransactionId(),
+                        "Payment already verified",
+                        existingRevealLink,
+                        existingRevealExpiry,
+                        false
+                ));
             }
 
             // Update transaction
@@ -197,6 +210,10 @@ public class PaymentController {
             record.setPaymentReference(request.getPayment_id());
             record.setCompletedAt(Instant.now());
             record.setRevealExpiresAt(Instant.now().plusSeconds(revealExpirySeconds));
+            if (!StringUtils.hasText(record.getRevealToken())) {
+                String revealToken = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
+                record.setRevealToken(revealToken);
+            }
             record.setSellerPayoutStatus(PAYOUT_PENDING);
 
             // Mark listing as sold
@@ -217,9 +234,24 @@ public class PaymentController {
                 record.setSellerPayoutProcessedAt(Instant.now());
             }
 
+                String revealLink = buildRevealLink(record.getRevealToken());
+                boolean emailSent = couponRevealMailService.sendRevealLink(
+                    user.getEmail(),
+                    listingOptional.map(CouponListing::getBrandName).orElse("your purchase"),
+                    revealLink,
+                    revealExpirySeconds
+                );
+
             transactionRepository.save(record);
 
-            return ResponseEntity.ok(new PaymentVerificationResponse(true, record.getTransactionId(), "Payment verified successfully"));
+                return ResponseEntity.ok(new PaymentVerificationResponse(
+                    true,
+                    record.getTransactionId(),
+                    "Payment verified successfully",
+                    revealLink,
+                    record.getRevealExpiresAt() != null ? record.getRevealExpiresAt().toString() : null,
+                    emailSent
+                ));
 
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
@@ -231,5 +263,13 @@ public class PaymentController {
 
     private double roundToTwoDecimals(double value) {
         return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).doubleValue();
+    }
+
+    private String buildRevealLink(String token) {
+        String base = revealLinkBaseUrl == null ? "" : revealLinkBaseUrl.trim();
+        if (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        return base + "?token=" + token;
     }
 }

@@ -114,6 +114,15 @@ export interface PaymentVerificationPayload {
   listing_id: string;
 }
 
+export interface PaymentVerificationResult {
+  success: boolean;
+  transaction_id: string;
+  message: string;
+  reveal_link?: string | null;
+  reveal_expires_at?: string | null;
+  email_sent?: boolean;
+}
+
 async function request<T>(path: string, init?: RequestInit, includeAuth = false): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -199,7 +208,7 @@ export const api = {
       body: JSON.stringify({ listing_id: listingId }),
     }, true),
   verifyPayment: (payload: PaymentVerificationPayload) =>
-    request<{ success: boolean; transaction_id: string; message: string }>("/api/payments/verify-payment", {
+    request<PaymentVerificationResult>("/api/payments/verify-payment", {
       method: "POST",
       body: JSON.stringify(payload),
     }, true),

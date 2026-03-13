@@ -94,11 +94,20 @@ const Buy = () => {
               setPaymentComplete(true);
               toast({
                 title: "Payment Successful! 🎉",
-                description: "Your coupon has been purchased. Check your email for the reveal link.",
+                description: verification.email_sent
+                  ? "Your coupon has been purchased. Reveal link was sent to your email."
+                  : "Your coupon has been purchased. Opening reveal page now.",
               });
-              setTimeout(() => {
-                navigate("/dashboard");
-              }, 2000);
+
+              if (verification.reveal_link) {
+                setTimeout(() => {
+                  window.location.href = verification.reveal_link as string;
+                }, 1200);
+              } else {
+                setTimeout(() => {
+                  navigate("/dashboard");
+                }, 2000);
+              }
             }
           } catch (error: any) {
             toast({

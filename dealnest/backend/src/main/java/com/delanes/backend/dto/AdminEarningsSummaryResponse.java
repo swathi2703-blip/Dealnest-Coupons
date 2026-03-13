@@ -1,9 +1,12 @@
 package com.delanes.backend.dto;
 
 import com.delanes.backend.model.TransactionRecord;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 import java.util.List;
 
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class AdminEarningsSummaryResponse {
 
     private double totalGrossAmount;

@@ -3,7 +3,6 @@ import { useNavigate, Link } from "react-router-dom";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { api } from "@/lib/api";
-import type { AdminEarningsSummary } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -25,8 +24,6 @@ const Dashboard = () => {
   const [listings, setListings] = useState<CouponListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingListingId, setDeletingListingId] = useState<string | null>(null);
-  const [adminSummary, setAdminSummary] = useState<AdminEarningsSummary | null>(null);
-  const [adminLoading, setAdminLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -37,28 +34,14 @@ const Dashboard = () => {
       if (!currentUser) {
         navigate("/auth");
         setListings([]);
-        setAdminSummary(null);
         setLoading(false);
       } else {
         fetchListings(currentUser.uid);
-        fetchAdminSummary();
       }
     });
 
     return () => unsubscribe();
   }, [navigate]);
-
-  const fetchAdminSummary = async () => {
-    setAdminLoading(true);
-    try {
-      const response = await api.getAdminEarningsSummary();
-      setAdminSummary(response.data);
-    } catch {
-      setAdminSummary(null);
-    } finally {
-      setAdminLoading(false);
-    }
-  };
 
   const fetchListings = async (userId: string) => {
     try {
@@ -168,70 +151,11 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <p className="text-muted-foreground text-sm">Total Earnings</p>
-                  <p className="text-2xl font-display font-bold">₹{totalEarnings}</p>
+                  <p className="text-2xl font-display font-bold">₹{totalEarnings.toFixed(2)}</p>
                 </div>
               </div>
             </div>
           </div>
-
-          {adminLoading ? (
-            <div className="bg-card rounded-3xl p-6 shadow-card mb-8">Loading admin earnings...</div>
-          ) : adminSummary ? (
-            <div className="bg-card rounded-3xl p-6 shadow-card mb-8 space-y-6">
-              <div>
-                <h2 className="font-display font-bold text-xl">Admin Earnings Profile</h2>
-                <p className="text-sm text-muted-foreground">15% platform share summary from successful transactions</p>
-              </div>
-
-              <div className="grid sm:grid-cols-4 gap-4">
-                <div className="rounded-2xl border border-border p-4">
-                  <p className="text-xs text-muted-foreground">Total Admin Amount</p>
-                  <p className="text-xl font-display font-bold">₹{adminSummary.total_admin_amount.toFixed(2)}</p>
-                </div>
-                <div className="rounded-2xl border border-border p-4">
-                  <p className="text-xs text-muted-foreground">Gross Volume</p>
-                  <p className="text-xl font-display font-bold">₹{adminSummary.total_gross_amount.toFixed(2)}</p>
-                </div>
-                <div className="rounded-2xl border border-border p-4">
-                  <p className="text-xs text-muted-foreground">Seller Payout Total</p>
-                  <p className="text-xl font-display font-bold">₹{adminSummary.total_seller_payout_amount.toFixed(2)}</p>
-                </div>
-                <div className="rounded-2xl border border-border p-4">
-                  <p className="text-xs text-muted-foreground">Successful Transactions</p>
-                  <p className="text-xl font-display font-bold">{adminSummary.total_successful_transactions}</p>
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="rounded-2xl border border-border p-4">
-                  <p className="text-xs text-muted-foreground">Seller Payout Success/Queued</p>
-                  <p className="text-lg font-display font-bold">{adminSummary.successful_seller_payouts}</p>
-                </div>
-                <div className="rounded-2xl border border-border p-4">
-                  <p className="text-xs text-muted-foreground">Seller Payout Failed</p>
-                  <p className="text-lg font-display font-bold text-destructive">{adminSummary.failed_seller_payouts}</p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="font-semibold">Recent Settlements</h3>
-                <div className="space-y-2">
-                  {adminSummary.recent_transactions.slice(0, 8).map((tx) => (
-                    <div key={tx.id} className="rounded-xl border border-border p-3 flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-medium">{tx.transaction_id}</p>
-                        <p className="text-xs text-muted-foreground">Payout: {tx.seller_payout_status || "N/A"}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm">Admin: ₹{(tx.platform_fee_amount || 0).toFixed(2)}</p>
-                        <p className="text-xs text-muted-foreground">Seller: ₹{(tx.seller_payout_amount || 0).toFixed(2)}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
 
           {/* Listings */}
           <div className="bg-card rounded-3xl p-6 shadow-card">

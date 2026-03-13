@@ -61,16 +61,6 @@ export interface TransactionRecord {
   reveal_expires_at: string | null;
 }
 
-export interface AdminEarningsSummary {
-  total_gross_amount: number;
-  total_admin_amount: number;
-  total_seller_payout_amount: number;
-  total_successful_transactions: number;
-  successful_seller_payouts: number;
-  failed_seller_payouts: number;
-  recent_transactions: TransactionRecord[];
-}
-
 export interface PublicWebsiteStats {
   savings_generated: number;
   active_listings: number;
@@ -213,8 +203,6 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }, true),
-  getAdminEarningsSummary: () =>
-    request<{ data: AdminEarningsSummary }>("/api/admin/earnings-summary", undefined, true),
   getPublicWebsiteStats: () =>
     request<{ data: PublicWebsiteStats }>("/api/public/stats"),
 };

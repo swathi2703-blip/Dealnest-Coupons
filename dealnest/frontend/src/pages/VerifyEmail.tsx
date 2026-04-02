@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { MailCheck } from "lucide-react";
 
+const EMAIL_VERIFICATION_CONTINUE_URL = "https://dealnest-frontend.onrender.com/";
+
 const getVerificationErrorMessage = (error: unknown) => {
   if (!(error instanceof FirebaseError)) {
     return "Please try again later.";
@@ -43,7 +45,7 @@ const VerifyEmail = () => {
   const sendVerificationEmail = async (currentUser: FirebaseUser) => {
     await currentUser.getIdToken(true);
     await sendEmailVerification(currentUser, {
-      url: `${window.location.origin}/auth`,
+      url: EMAIL_VERIFICATION_CONTINUE_URL,
       handleCodeInApp: false,
     });
   };

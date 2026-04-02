@@ -95,19 +95,13 @@ const Buy = () => {
               toast({
                 title: "Payment Successful! 🎉",
                 description: verification.email_sent
-                  ? "Your coupon has been purchased. Reveal link was sent to your email."
-                  : "Your coupon has been purchased. Opening reveal page now.",
+                  ? "Your coupon has been purchased. Coupon details were sent to your email."
+                  : "Your coupon has been purchased. Redirecting you to your dashboard.",
               });
 
-              if (verification.reveal_link) {
-                setTimeout(() => {
-                  window.location.href = verification.reveal_link as string;
-                }, 1200);
-              } else {
-                setTimeout(() => {
-                  navigate("/dashboard");
-                }, 2000);
-              }
+              setTimeout(() => {
+                navigate("/dashboard");
+              }, 1200);
             }
           } catch (error: any) {
             toast({
@@ -231,7 +225,7 @@ const Buy = () => {
                       <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2">
                         <h3 className="font-semibold text-primary">✅ Payment Successful</h3>
                         <p className="text-sm">
-                          Your coupon has been purchased! Check your email for the reveal link valid for 5 minutes.
+                          Your coupon has been purchased. Coupon details have been sent to your email.
                         </p>
                         <Button className="w-full mt-4" onClick={() => navigate("/dashboard")}>
                           Go to Dashboard

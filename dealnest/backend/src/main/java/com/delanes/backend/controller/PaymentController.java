@@ -235,9 +235,10 @@ public class PaymentController {
             }
 
                 String revealLink = buildRevealLink(record.getRevealToken());
-                boolean emailSent = couponRevealMailService.sendRevealLink(
+                boolean emailSent = couponRevealMailService.sendCouponDetails(
                     user.getEmail(),
                     listingOptional.map(CouponListing::getBrandName).orElse("your purchase"),
+                    listingOptional.map(CouponListing::getCouponCode).orElse(null),
                     revealLink,
                     revealExpirySeconds
                 );

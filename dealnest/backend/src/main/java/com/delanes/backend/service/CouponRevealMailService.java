@@ -20,8 +20,12 @@ public class CouponRevealMailService {
     }
 
     public boolean sendRevealLink(String toEmail, String listingBrand, String revealUrl, long validSeconds) {
+        return sendCouponDetails(toEmail, listingBrand, null, revealUrl, validSeconds);
+    }
+
+    public boolean sendCouponDetails(String toEmail, String listingBrand, String couponCode, String revealUrl, long validSeconds) {
         JavaMailSender sender = mailSenderProvider.getIfAvailable();
-        if (sender == null || !StringUtils.hasText(toEmail) || !StringUtils.hasText(revealUrl)) {
+        if (sender == null || !StringUtils.hasText(toEmail)) {
             return false;
         }
 
@@ -29,8 +33,8 @@ public class CouponRevealMailService {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromAddress);
             message.setTo(toEmail);
-            message.setSubject("DealNest coupon link (valid for 5 minutes)");
-            message.setText(buildBody(listingBrand, revealUrl, validSeconds));
+            message.setSubject("DealNest coupon purchase details");
+            message.setText(buildBody(listingBrand, couponCode, revealUrl, validSeconds));
             sender.send(message);
             return true;
         } catch (Exception ex) {
@@ -38,12 +42,19 @@ public class CouponRevealMailService {
         }
     }
 
-    private String buildBody(String listingBrand, String revealUrl, long validSeconds) {
+    private String buildBody(String listingBrand, String couponCode, String revealUrl, long validSeconds) {
         String brandLabel = StringUtils.hasText(listingBrand) ? listingBrand : "your purchase";
-        return "Your payment has been verified for " + brandLabel + ".\n\n"
-                + "Open this secure link to reveal your coupon details:\n"
-                + revealUrl + "\n\n"
+        String couponLine = StringUtils.hasText(couponCode)
+                ? "Coupon code: " + couponCode + "\n"
+                : "Coupon code: Not available in this email.\n";
+        String linkSection = StringUtils.hasText(revealUrl)
+                ? "\nReveal link (optional):\n" + revealUrl + "\n"
                 + "This link is valid for " + (validSeconds / 60) + " minutes.\n"
+                : "";
+
+        return "Your payment has been verified for " + brandLabel + ".\n\n"
+                + couponLine
+                + linkSection
                 + "If you did not make this purchase, contact support immediately.";
     }
 }

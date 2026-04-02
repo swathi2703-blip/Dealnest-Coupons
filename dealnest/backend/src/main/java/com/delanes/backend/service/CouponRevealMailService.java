@@ -6,9 +6,13 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class CouponRevealMailService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CouponRevealMailService.class);
 
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
 
@@ -26,6 +30,7 @@ public class CouponRevealMailService {
     public boolean sendCouponDetails(String toEmail, String listingBrand, String couponCode, String revealUrl, long validSeconds) {
         JavaMailSender sender = mailSenderProvider.getIfAvailable();
         if (sender == null || !StringUtils.hasText(toEmail)) {
+            LOGGER.warn("Coupon email not sent. mailSenderAvailable={}, toEmailPresent={}", sender != null, StringUtils.hasText(toEmail));
             return false;
         }
 
@@ -36,8 +41,10 @@ public class CouponRevealMailService {
             message.setSubject("DealNest coupon purchase details");
             message.setText(buildBody(listingBrand, couponCode, revealUrl, validSeconds));
             sender.send(message);
+            LOGGER.info("Coupon email sent successfully to {}", toEmail);
             return true;
         } catch (Exception ex) {
+            LOGGER.error("Failed to send coupon email to {}", toEmail, ex);
             return false;
         }
     }

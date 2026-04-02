@@ -37,6 +37,12 @@ This repository is configured for Render Blueprint deployment using `render.yaml
 - `APP_PAYMENT_PAYOUT_SOURCE_ACCOUNT_NUMBER`
 - `APP_ADMIN_EMAILS`
 - `APP_MAIL_FROM` (default `no-reply@dealnest.local`)
+- `SPRING_MAIL_HOST` (for example `smtp.gmail.com`)
+- `SPRING_MAIL_PORT` (usually `587`)
+- `SPRING_MAIL_USERNAME` (SMTP login email)
+- `SPRING_MAIL_PASSWORD` (SMTP app password)
+- `SPRING_MAIL_SMTP_AUTH` (default `true`)
+- `SPRING_MAIL_SMTP_STARTTLS_ENABLE` (default `true`)
 
 ## Required Frontend Env Vars
 
